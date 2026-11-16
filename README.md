@@ -54,16 +54,16 @@ The agent decides when to search, embeds the user's question with the *same* mod
 ## Screenshots
 
 **Ingestion workflow** — PDF in, 19 embedded chunks out
-![Ingestion workflow](screenshots/01-workflow-ingestion.png)
+![Ingestion workflow](Screenshot/01-workflow-ingestion.png)
 
 **Retrieval workflow** — the vector store attached to the agent as a callable tool
-![RAG assistant workflow](screenshots/02-workflow-rag-assistant.png)
+![RAG assistant workflow](Screenshot/02-workflow-rag-assistant.png)
 
 **Live demo** — an accurate answer sourced from the manual, then an honest refusal when asked about a document that does not exist
-![Telegram demo](screenshots/03-telegram-demo.png)
+![Telegram demo](Screenshot/03-telegram-demo.png)
 
 **Vector store** — 19 chunks with their 3072-dimension embeddings
-![Supabase documents table](screenshots/04-supabase-documents.png)
+![Supabase documents table](Screenshot/04-supabase-documents.png)
 
 ---
 
@@ -142,7 +142,7 @@ Both are required. See [Gotchas](#gotchas-worth-knowing) for why.
 
 ### 3. Import workflows
 
-Import both JSON files from `workflow/`, then set credentials:
+Import both JSON files from `Workflows/`, then set credentials:
 
 - **Supabase API** — host + service_role key
 - **Google Gemini(PaLM) API** — your API key
