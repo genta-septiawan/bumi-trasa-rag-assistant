@@ -1,0 +1,230 @@
+{
+  "name": "Bumi Trasa - RAG Assistant",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        0,
+        0
+      ],
+      "id": "68d8dbb5-c034-466b-8747-b4b3c6541158",
+      "name": "Telegram Trigger",
+      "notes": "Requires WEBHOOK_URL pointing at an HTTPS tunnel.",
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message.text }}",
+        "options": {
+          "systemMessage": "Kamu adalah Docs Assistant untuk PT Bumi Trasa Infrastruktur, kontraktor spesialis jalan, jembatan, dan drainase.\n\nTugasmu menjawab pertanyaan tim internal berdasarkan Manual SOP Proyek perusahaan (dokumen MAN-BTI-2026).\n\nATURAN WAJIB:\n1. Selalu gunakan tool \"sop_bumi_trasa\" untuk mencari informasi sebelum menjawab. Jangan menjawab dari pengetahuan umummu.\n2. Jawab HANYA berdasarkan isi yang dikembalikan tool tersebut.\n3. Jika tool tidak mengembalikan informasi yang relevan, katakan terus terang: \"Informasi itu tidak saya temukan dalam Manual SOP. Silakan konfirmasi ke Koordinator HSE.\" Jangan mengarang nomor dokumen, angka spesifikasi, atau prosedur.\n4. Sebutkan nomor SOP atau formulir yang relevan bila ada dalam hasil pencarian.\n\nGaya jawaban: bahasa Indonesia, singkat, langsung ke poin. Pakai list kalau langkahnya lebih dari dua.\n\nIni menyangkut keselamatan kerja — akurasi lebih penting daripada terdengar membantu.\n\nJawab dengan teks biasa. Jangan gunakan format markdown seperti **tebal**, _miring_, atau backtick — platform tujuan tidak mendukungnya."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        224,
+        0
+      ],
+      "id": "07d63201-cb9d-4e35-8e83-48f48e31d51d",
+      "name": "AI Agent",
+      "notes": "Retry On Fail handles transient 503 responses from the model API.",
+      "retryOnFail": true,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        96,
+        208
+      ],
+      "id": "cdfe0fd0-4127-4f2b-a934-f26d172bbbfd",
+      "name": "Google Gemini Chat Model",
+      "notesInFlow": false,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Google Gemini API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Telegram Trigger').item.json.message.chat.id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        240,
+        208
+      ],
+      "id": "8cad321b-157e-47c6-bce5-4e75a054b4b0",
+      "name": "Simple Memory",
+      "notes": "Session keyed per Telegram chat so conversations stay separated."
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Berisi Manual SOP Proyek PT Bumi Trasa Infrastruktur: prosedur K3, APD per zona kerja, kerja di ketinggian, pengoperasian alat berat, spesifikasi mutu beton dan material, prosedur pengecoran, pemadatan tanah, administrasi proyek, dan tanggap darurat.",
+        "tableName": {
+          "__rl": true,
+          "value": "documents",
+          "mode": "list",
+          "cachedResultName": "documents"
+        },
+        "topK": 8,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1.3,
+      "position": [
+        368,
+        256
+      ],
+      "id": "9ddd0902-451d-4b86-ae6b-7d93c50fb978",
+      "name": "sop_bumi_trasa",
+      "notes": "Node name IS the tool name the agent sees. topK raised from 4 to 8 after a retrieval miss.",
+      "credentials": {
+        "supabaseApi": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        368,
+        416
+      ],
+      "id": "80ad706d-a59d-46b1-b7be-04259dc89de6",
+      "name": "Embeddings Google Gemini",
+      "notes": "Must be the SAME model used during ingestion, or retrieval returns noise.",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Google Gemini API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        592,
+        0
+      ],
+      "id": "56e60dc4-dc21-45eb-b889-9c2d51946df2",
+      "name": "Send a text message",
+      "notes": "HTML parse mode keeps stray asterisks from breaking the message.",
+      "credentials": {
+        "telegramApi": {
+          "id": "REPLACE_WITH_YOUR_CREDENTIAL_ID",
+          "name": "Telegram Bot"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "sop_bumi_trasa": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini": {
+      "ai_embedding": [
+        [
+          {
+            "node": "sop_bumi_trasa",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "tags": []
+}
